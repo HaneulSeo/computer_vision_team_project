@@ -1,10 +1,9 @@
-#include <opencv2/opencv.hpp>
 #include <iostream>
+#include <opencv2/opencv.hpp>
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     // ===== 1. 영상 열기 =====
-    std::string videoPath = (argc > 1) ? argv[1] : "../ex1.mp4";
+    std::string videoPath = (argc > 1) ? argv[1] : "./input/2.mp4";
     cv::VideoCapture cap(videoPath);
 
     if (!cap.isOpened()) {
@@ -14,16 +13,16 @@ int main(int argc, char** argv)
 
     // FPS 가져오기 (3초 기준 계산에 사용)
     double fps = cap.get(cv::CAP_PROP_FPS);
-    if (fps <= 0) fps = 30.0; // 못 가져오면 기본 30fps 가정
+    if (fps <= 0) fps = 30.0;  // 못 가져오면 기본 30fps 가정
     int framesFor3Sec = static_cast<int>(fps * 3.0);
 
     // ===== 2. 파라미터 설정 =====
-    const double SCALE = 0.5;                 // 해상도 축소 비율
-    const int BLUR_KSIZE = 3;                 // GaussianBlur 커널 크기
-    const int DIFF_THRESHOLD = 30;            // 이진화 threshold (0~255)
+    const double SCALE = 0.5;       // 해상도 축소 비율
+    const int BLUR_KSIZE = 3;       // GaussianBlur 커널 크기
+    const int DIFF_THRESHOLD = 30;  // 이진화 threshold (0~255)
 
-    const double MOTION_RATIO_THRESH = 0.002;     // 일반 모션 기준 (0.2%)
-    const double HUGE_MOTION_RATIO_THRESH = 0.02; // huge motion 기준 (2%)
+    const double MOTION_RATIO_THRESH = 0.002;      // 일반 모션 기준 (0.2%)
+    const double HUGE_MOTION_RATIO_THRESH = 0.02;  // huge motion 기준 (2%)
 
     // idle 모드에서 건너뛸 프레임 수 (예: 4면 5프레임 중 1개만 분석)
     const int IDLE_SKIP = 4;
@@ -42,13 +41,13 @@ int main(int argc, char** argv)
     bool roiInitialized = false;
 
     // ===== Detection window 상태 관리 =====
-    bool detectionActive = false;      // 실제 구현 화면이 영상 출력 중인지 여부
-    int framesSinceLastMotion = 0;     // 마지막 모션 이후 지난 프레임 수
-    int overlayFramesLeft = 0;         // "MOTION DETECT" 텍스트를 더 보여줄 프레임 수
+    bool detectionActive = false;   // 실제 구현 화면이 영상 출력 중인지 여부
+    int framesSinceLastMotion = 0;  // 마지막 모션 이후 지난 프레임 수
+    int overlayFramesLeft = 0;      // "MOTION DETECT" 텍스트를 더 보여줄 프레임 수
 
     // 창 두 개 생성
-    cv::namedWindow("Original",   cv::WINDOW_NORMAL);
-    cv::namedWindow("Detection",  cv::WINDOW_NORMAL);
+    cv::namedWindow("Original", cv::WINDOW_NORMAL);
+    cv::namedWindow("Detection", cv::WINDOW_NORMAL);
 
     while (true) {
         // ===== idle 모드에서는 프레임 일부만 분석 =====
@@ -86,7 +85,7 @@ int main(int argc, char** argv)
         if (!roiInitialized) {
             int h = smallGray.rows;
             int w = smallGray.cols;
-            int roiY = static_cast<int>(h * 0.7); // 위 70% 제외, 아래 30% 사용
+            int roiY = static_cast<int>(h * 0.7);  // 위 70% 제외, 아래 30% 사용
             int roiH = h - roiY;
             roiRect = cv::Rect(0, roiY, w, roiH);
             roiInitialized = true;
@@ -118,7 +117,7 @@ int main(int argc, char** argv)
         cv::Mat roiCurr = smallGray(roiRect);
         cv::Mat roiPrev = prevSmallGray(roiRect);
 
-        cv::absdiff(roiCurr, roiPrev, diff);   // diff는 ROI 크기
+        cv::absdiff(roiCurr, roiPrev, diff);  // diff는 ROI 크기
 
         // ===== 8. 이진화 =====
         cv::threshold(diff, mask, DIFF_THRESHOLD, 255, cv::THRESH_BINARY);
@@ -128,7 +127,7 @@ int main(int argc, char** argv)
 
         // ===== 10. 모션 비율 계산 (ROI 기준) =====
         int motionPixels = cv::countNonZero(mask);
-        int totalPixels  = mask.rows * mask.cols;
+        int totalPixels = mask.rows * mask.cols;
         double motionRatio = 0.0;
         if (totalPixels > 0) {
             motionRatio = static_cast<double>(motionPixels) / totalPixels;
@@ -139,14 +138,14 @@ int main(int argc, char** argv)
         cv::Scalar statusColor;
 
         if (motionRatio > HUGE_MOTION_RATIO_THRESH) {
-            statusText  = "HUGE MOTION";
-            statusColor = cv::Scalar(0, 0, 255);   // 빨강
+            statusText = "HUGE MOTION";
+            statusColor = cv::Scalar(0, 0, 255);  // 빨강
         } else if (motionRatio > MOTION_RATIO_THRESH) {
-            statusText  = "MOTION";
-            statusColor = cv::Scalar(0, 255, 255); // 노랑
+            statusText = "MOTION";
+            statusColor = cv::Scalar(0, 255, 255);  // 노랑
         } else {
-            statusText  = "NO MOTION";
-            statusColor = cv::Scalar(0, 255, 0);   // 초록
+            statusText = "NO MOTION";
+            statusColor = cv::Scalar(0, 255, 0);  // 초록
         }
 
         bool hasMotion = (motionRatio > MOTION_RATIO_THRESH);
@@ -168,7 +167,7 @@ int main(int argc, char** argv)
             if (!detectionActive) {
                 // idle → active로 전환
                 detectionActive = true;
-                overlayFramesLeft = framesFor3Sec; // 약 3초간 "MOTION DETECT"
+                overlayFramesLeft = framesFor3Sec;  // 약 3초간 "MOTION DETECT"
             } else {
                 // 이미 active 상태인데 텍스트를 연장하고 싶으면:
                 if (overlayFramesLeft <= 0)
@@ -206,7 +205,7 @@ int main(int argc, char** argv)
                 cv::putText(detectDisplay, "MOTION DETECT",
                             cv::Point(50, 80),
                             cv::FONT_HERSHEY_SIMPLEX,
-                            1.5, cv::Scalar(0, 0, 255), 3); // 빨간색 굵게
+                            1.5, cv::Scalar(0, 0, 255), 3);  // 빨간색 굵게
             }
         } else {
             detectDisplay = cv::Mat(frame.rows, frame.cols, frame.type(), cv::Scalar::all(0));
